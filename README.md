@@ -67,18 +67,10 @@ $$\text{SwiGLU}(x) = \left(xW_1 \odot \text{SiLU}(xW_3)\right)W_2$$
 
 ### Quick Start
 
-```bash
-# Install dependencies
+run only in google colab
+first, create an cell and run this:
 pip install torch numpy transformers datasets matplotlib
-```
-
-Run the training and streaming pipeline:
-
-```bash
-python train_war.py
-```
-
----
+after, copy an paste the model to train it
 
 ## 🇧🇷 Documentação em Português
 
