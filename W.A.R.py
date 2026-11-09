@@ -255,7 +255,7 @@ class TransformerBlock(nn.Module):
         self.ln2 = RMSNorm(d_model)
         self.ffn = SwiGLUFFN(d_model)
     def forward(self, x, is_causal = True):
-        x = x + self.mha(self.ln1(x))
+        x = x + self.mha(self.ln1(x), is_causal = is_causal)
         x = x + self.ffn(self.ln2(x))
         return x
 
