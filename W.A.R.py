@@ -8,7 +8,7 @@ from transformers import AutoTokenizer
 from datasets import load_dataset
 from google.colab import drive, runtime
 import numpy as np
-
+import copy
 # ==========================================================
 # 1. MONTAR GOOGLE DRIVE
 # ==========================================================
@@ -393,7 +393,6 @@ losses = []
 val_losses = []
 step = 0  # <--- Inicializado antes do loop!
 
-gpt.train()
 # Exemplo de função de treino para o Promotor ou Juiz
 def treinar_classificador(modelo, dataloader, epochs=1, lr=1e-4):
     optimizer = torch.optim.AdamW(modelo.parameters(), lr=lr, weight_decay=0.01)
@@ -431,6 +430,7 @@ def treinar_classificador(modelo, dataloader, epochs=1, lr=1e-4):
                 preds = (logits > 0.0).float()
                 acc = (preds == labels).float().mean().item() * 100
                 print(f"Step {step} | Loss: {loss.item():.4f} | Acurácia: {acc:.1f}%")
+gpt.train()
 for epoch in range(epochs):
     print(f"\n===== EPOCH {epoch + 1}/{epochs} =====")
 
@@ -477,6 +477,20 @@ for epoch in range(epochs):
     print(f"Validation Loss: {val_loss:.4f}")
 
 print("\nTreinamento terminado!")
+print("copiando o receptor...")
+num_receptors = 5
+print("Criando os 5 Receptores base no Drive...")
+# Pega o modelo original por trás do torch.compile
+receptor_base = gpt._orig_mod if hasattr(gpt, "_orig_mod") else gpt
+
+# Passa os pesos para a CPU uma única vez
+estado_cpu = {k: v.cpu() for k, v in receptor_base.state_dict().items()}
+for i in range(num_receptors):
+    caminho_rec = f"{SAVE_DIR}/Receptor_{i}.pt"
+    torch.save(estado_cpu, caminho_rec)
+    print(f"---> Receptor {i} salvo em: {caminho_rec}")
+del estado_cpu
+gc.collect()
 promotor = WARClassifier(
     d_model=768,
     n_heads=12,
