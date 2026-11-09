@@ -339,9 +339,7 @@ gpt = GPT(d_model, n_heads, n_blocks, vocab_size, context_length).to(device)
 if tokenizer.pad_token_id is None:
     tokenizer.pad_token_id = tokenizer.eos_token_id
 pad_id = tokenizer.pad_token_id
-print("Parâmetros do Promotor:", f"{sum(p.numel() for p in promotor.parameters()):,}")
 print("Parâmetros do Receptor:", f"{sum(p.numel() for p in gpt.parameters()):,}")
-print("Parâmetros do Juiz    :", f"{sum(p.numel() for p in juiz.parameters()):,}")
 tokens_teste = torch.randint(0, vocab_size, (2, 64), device=device)
 logits_teste = gpt(tokens_teste)
 assert logits_teste.shape == (2, 64, vocab_size)
