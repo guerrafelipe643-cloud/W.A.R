@@ -339,22 +339,6 @@ gpt = GPT(d_model, n_heads, n_blocks, vocab_size, context_length).to(device)
 if tokenizer.pad_token_id is None:
     tokenizer.pad_token_id = tokenizer.eos_token_id
 pad_id = tokenizer.pad_token_id
-promotor = WARClassifier(
-    d_model=768,
-    n_heads=12,
-    n_blocks=16,
-    vocab_size=vocab_size,
-    context_length=2048,
-    pad_token_id=pad_id
-).to(device)
-juiz = WARClassifier(
-    d_model=1024,
-    n_heads=16,
-    n_blocks=20,
-    vocab_size=vocab_size,
-    context_length=2048,
-    pad_token_id=pad_id
-).to(device)
 print("Parâmetros do Promotor:", f"{sum(p.numel() for p in promotor.parameters()):,}")
 print("Parâmetros do Receptor:", f"{sum(p.numel() for p in gpt.parameters()):,}")
 print("Parâmetros do Juiz    :", f"{sum(p.numel() for p in juiz.parameters()):,}")
@@ -495,6 +479,22 @@ for epoch in range(epochs):
     print(f"Validation Loss: {val_loss:.4f}")
 
 print("\nTreinamento terminado!")
+promotor = WARClassifier(
+    d_model=768,
+    n_heads=12,
+    n_blocks=16,
+    vocab_size=vocab_size,
+    context_length=2048,
+    pad_token_id=pad_id
+).to(device)
+juiz = WARClassifier(
+    d_model=1024,
+    n_heads=16,
+    n_blocks=20,
+    vocab_size=vocab_size,
+    context_length=2048,
+    pad_token_id=pad_id
+).to(device)
 treinar_classificador(promotor, promotor_loader, epochs=1, lr=1e-4)
 treinar_classificador(juiz, juiz_loader, epochs=1, lr=1e-4)
 # ==========================================================
