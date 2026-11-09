@@ -82,7 +82,6 @@ O **W.A.R.** é um Modelo de Linguagem de Grande Escala (LLM) *open-source* cons
 
 * **Implementação Pura em PyTorch:** Construção manual das camadas de atenção multi-cabeça (`MultiHeadAttention`), normalização por raiz do valor quadrático médio (`RMSNorm`), rede densa ativada por porta `SwiGLU`, *Mean Pooling* mascarado para classificação e *Weight Tying* entre a matriz de Embedding e a `lm_head`.
 * **Pipeline de Dados em Streaming com `numpy.memmap`:** Processamento e empacotamento (*sequence packing*) do dataset `FineWeb` em janelas de contexto de $2048$ tokens gravando diretamente em arquivos binários mapeados em disco (`.bin`), evitando estouro de memória RAM durante o pré-treinamento.
-* **Transfer Learning Interno (Receptor $\rightarrow$ Juiz):** O módulo Juiz herda diretamente as representações linguísticas pré-treinadas dos primeiros 20 blocos do Receptor (`strict=False`), acelerando a convergência na detecção de alucinações.
 * **Otimizado para Aceleradores (GPU CUDA & Cloud TPU):** Suporte nativo a precisão mista `bfloat16` (`torch.autocast`), compilação de grafo via `torch.compile`, *gradient clipping* e dimensões internas alinhadas em múltiplos de $128$.
 
 ### Arquitetura Tripla
