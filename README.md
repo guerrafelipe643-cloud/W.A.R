@@ -13,7 +13,7 @@
 
 ### Overview
 
-**W.A.R.** is an open-source Large Language Model (LLM) and modular safety architecture built entirely from scratch in PyTorch (~1.09B combined parameters). Designed and implemented by a 14-year-old independent student researcher from Brazil, the project explores both foundational Transformer pre-training efficiency and a multi-stage **Promoter $\rightarrow$ Receptor $\rightarrow$ Judge** pipeline aimed at mitigating adversarial attacks and factual hallucinations at the architectural level.
+**W.A.R.** is an open-source Large Language Model (LLM) and modular safety architecture built entirely from scratch in PyTorch (~1.09B combined parameters in this version). Designed and implemented by a 14-year-old independent student researcher from Brazil, the project explores both foundational Transformer pre-training efficiency and a multi-stage **Promoter $\rightarrow$ Receptor $\rightarrow$ Judge** pipeline aimed at mitigating adversarial attacks and factual hallucinations at the architectural level.
 
 ### Architectural Highlights
 
