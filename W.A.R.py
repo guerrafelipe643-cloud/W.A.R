@@ -533,32 +533,71 @@ print("copiando o receptor...")
 num_receptors = 5
 print("Criando os 5 Receptores base no Drive...")
 # Pega o modelo original por trás do torch.compile
+# 1. Salva o Receptor principal e o checkpoint ANTES de limpá-lo da GPU/TPU
 receptor_base = gpt._orig_mod if hasattr(gpt, "_orig_mod") else gpt
+torch.save(receptor_base.state_dict(), "/content/drive/MyDrive/WAR2_receptor.pt")
+torch.save(
+    {
+        "model_state_dict": receptor_base.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "config": {
+            "vocab_size": vocab_size,
+            "d_model": d_model,
+            "context_length": context_length,
+            "n_heads": n_heads,
+            "n_blocks": n_blocks,
+        },
+        "epoch": epoch,
+    },
+    "/content/drive/MyDrive/WAR2_checkpoint.pt",
+)
 
-# Passa os pesos para a CPU uma única vez
+# 2. Cria os 5 Receptores no Drive a partir da cópia na CPU
 estado_cpu = {k: v.cpu() for k, v in receptor_base.state_dict().items()}
-for i in range(num_receptors):
+for i in range(5):
     caminho_rec = f"{SAVE_DIR}/Receptor_{i}.pt"
     torch.save(estado_cpu, caminho_rec)
     print(f"---> Receptor {i} salvo em: {caminho_rec}")
+
+# 3. LIBERA A GPU/TPU DO RECEPTOR E DO OTIMIZADOR DELE!
+del gpt, receptor_base, optimizer
+if device.type == "cuda":
+    torch.cuda.empty_cache()
+elif device.type == "tpu":
+    torch.tpu.synchronize()
+    torch.tpu.empty_cache()
+gc.collect()
+
+# 4. Agora sim! Com a memória 100% livre, treina o Promotor sozinho na placa
+promotor = WARPromoterRouter(
+    d_model=768, n_heads=12, n_blocks=16,
+    vocab_size=vocab_size, context_length=2048, pad_token_id=pad_id
+).to(device)
+treinar_classificador(promotor, promotor_loader, epochs=1, lr=1e-4)
+torch.save(promotor.state_dict(), "/content/drive/MyDrive/WAR2_promotor.pt")
+
+# Libera o Promotor da GPU/TPU antes de carregar o Juiz!
+del promotor
+if device.type == "cuda":
+    torch.cuda.empty_cache()
+gc.collect()
+
+# 5. Agora carrega o Juiz sozinho na placa, puxando os pesos de 'estado_cpu'
+juiz = WARClassifier(
+    d_model=1024, n_heads=16, n_blocks=20,
+    vocab_size=vocab_size, context_length=2048, pad_token_id=pad_id
+).to(device)
+
+juiz_state = juiz.state_dict()
+for k, v in estado_cpu.items():
+    if k in juiz_state and juiz_state[k].shape == v.shape:
+        juiz_state[k].copy_(v.to(device))
+
 del estado_cpu
 gc.collect()
-promotor = WARPromoterRouter(
-    d_model=768,
-    n_heads=12,
-    n_blocks=16,
-    vocab_size=vocab_size,
-    context_length=2048,
-    pad_token_id=pad_id
-).to(device)
-juiz = WARClassifier(
-    d_model=1024,
-    n_heads=16,
-    n_blocks=20,
-    vocab_size=vocab_size,
-    context_length=2048,
-    pad_token_id=pad_id
-).to(device)
+
+treinar_classificador(juiz, juiz_loader, epochs=1, lr=1e-4)
+torch.save(juiz.state_dict(), "/content/drive/MyDrive/WAR2_juiz.pt")
 # Copia os Embeddings e os primeiros 20 blocos do Receptor pré-treinado para o Juiz!
 receptor_state = gpt._orig_mod.state_dict() if hasattr(gpt, "_orig_mod") else gpt.state_dict()
 juiz_state = juiz.state_dict()
@@ -566,8 +605,6 @@ juiz_state = juiz.state_dict()
 for k, v in receptor_state.items():
     if k in juiz_state and juiz_state[k].shape == v.shape:
         juiz_state[k].copy_(v)
-treinar_classificador(promotor, promotor_loader, epochs=1, lr=1e-4)
-treinar_classificador(juiz, juiz_loader, epochs=1, lr=1e-4)
 # ==========================================================
 # 7. GRÁFICO E SALVAMENTO DO MODELO
 # ==========================================================
