@@ -9,6 +9,7 @@ from datasets import load_dataset
 from google.colab import drive, runtime
 import numpy as np
 import copy
+import gc
 # ==========================================================
 # 1. MONTAR GOOGLE DRIVE
 # ==========================================================
@@ -446,37 +447,38 @@ step = 0  # <--- Inicializado antes do loop!
 # Exemplo de função de treino para o Promotor ou Juiz
 def treinar_classificador(modelo, dataloader, epochs=1, lr=1e-4):
     optimizer = torch.optim.AdamW(modelo.parameters(), lr=lr, weight_decay=0.01)
-    # Essa função de Loss já aplica a Sigmoid internamente com precisão matemática máxima
-    criterion = nn.BCEWithLogitsLoss()
+    criterion_bce = nn.BCEWithLogitsLoss()
+    criterion_ce = nn.CrossEntropyLoss(ignore_index=-100) # Para o roteador (se houver rótulo de rota)
     
     modelo.train()
     for epoch in range(epochs):
         for step, batch in enumerate(dataloader):
-            # 1. Pegamos os tokens da frase (B, T) e o rótulo verdadeiro 0.0 ou 1.0 (B,)
             input_ids = batch["input_ids"].to(device, dtype=torch.long)
             labels = batch["labels"].to(device, dtype=torch.float32)
 
-            # 2. Zeramos os gradientes acumulados do passo anterior
             optimizer.zero_grad(set_to_none=True)
 
-            # 3. Forward Pass em BF16
             with torch.autocast(device_type=device.type, dtype=torch.bfloat16, enabled=use_bf16):
-                # O modelo devolve 1 nota (logit) para cada frase do batch
-                logits = modelo(input_ids)
-                # Comparamos a nota do modelo com o gabarito (0.0 ou 1.0)
-                loss = criterion(logits, labels)
+                saida = modelo(input_ids)
+                
+                # Se for o WARPromoterRouter, ele devolve (safety_logit, router_logits)
+                if isinstance(saida, tuple):
+                    logits, router_logits = saida
+                    loss = criterion_bce(logits, labels)
+                    # Se o batch também tiver os rótulos de qual Receptor usar (0 a 4):
+                    if "router_labels" in batch:
+                        r_labels = batch["router_labels"].to(device, dtype=torch.long)
+                        loss = loss + criterion_ce(router_logits, r_labels)
+                else:
+                    # Se for o Juiz (WARClassifier), devolve apenas 1 tensor
+                    logits = saida
+                    loss = criterion_bce(logits, labels)
 
-            # 4. Backward Pass: calcula o erro de cada peso
             loss.backward()
-            
-            # 5. Evita explosão de gradiente
             torch.nn.utils.clip_grad_norm_(modelo.parameters(), max_norm=1.0)
-            
-            # 6. Atualiza os pesos
             optimizer.step()
 
             if step % 50 == 0:
-                # Calculamos a acurácia na hora: se logit > 0.0, o modelo chutou 1.0!
                 preds = (logits > 0.0).float()
                 acc = (preds == labels).float().mean().item() * 100
                 print(f"Step {step} | Loss: {loss.item():.4f} | Acurácia: {acc:.1f}%")
