@@ -65,13 +65,6 @@ $$\text{SwiGLU}(x) = \left(xW_1 \odot \text{SiLU}(xW_3)\right)W_2$$
 | **Judge** (`WARClassifier`) | Hallucination Verifier | `1024` | `16` | `20` | `2048` | Bidirectional (`is_causal=False`) | **~407M** |
 | **Total System** | **Tri-Modular Pipeline** | — | — | **60** | `2048` | **Hybrid** | **~1.09B** |
 
-### Quick Start
-
-run only in google colab
-first, create an cell and run this:
-pip install torch numpy transformers datasets matplotlib
-after, copy an paste the model to train it
-
 ## 🇧🇷 Documentação em Português
 
 ### Sobre o Projeto
