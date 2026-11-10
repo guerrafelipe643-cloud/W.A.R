@@ -335,6 +335,56 @@ class WARClassifier(nn.Module):
         pooled = summed / counts
         logit = self.classifier_head(pooled).squeeze(-1) 
         return logit
+class WARPromoterRouter(nn.Module):
+    def __init__(self, d_model, n_heads, n_blocks, vocab_size, context_length, pad_token_id, num_receptors=5):
+        super().__init__()
+        self.pad_token_id = pad_token_id
+        self.token_emb = nn.Embedding(vocab_size, d_model)
+        self.pos_emb = nn.Embedding(context_length, d_model)
+        self.blocks = nn.ModuleList(
+            [TransformerBlock(d_model, n_heads) for _ in range(n_blocks)]
+        )      
+        self.ln_f = RMSNorm(d_model)
+        
+        # CABEÇA 1: Segurança (Binária -> 1 saída: Seguro ou Ataque)
+        self.safety_head = nn.Linear(d_model, 1, bias=False)
+        
+        # CABEÇA 2: Roteador (Multiclasse -> 5 saídas: Qual Receptor de 0 a 4 usar?)
+        self.router_head = nn.Linear(d_model, num_receptors, bias=False)
+        
+        self.init_weights(n_blocks)
+
+    def init_weights(self, n_blocks):
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            elif isinstance(module, nn.Embedding):
+                torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+        residual_std = 0.02 / math.sqrt(2 * n_blocks)
+        for block in self.blocks:
+            torch.nn.init.normal_(block.mha.out_proj.weight, mean=0.0, std=residual_std)
+            torch.nn.init.normal_(block.ffn.w2.weight, mean=0.0, std=residual_std)
+
+    def forward(self, tokens):
+        B, T = tokens.shape
+        positions = torch.arange(T, device=tokens.device)
+        x = self.token_emb(tokens) + self.pos_emb(positions)
+        
+        for block in self.blocks:
+            x = block(x, is_causal=False)
+        x = self.ln_f(x)
+        
+        # Mean Pooling ignorando o padding
+        mask = (tokens != self.pad_token_id).unsqueeze(-1).type_as(x)
+        summed = (x * mask).sum(dim=1)
+        counts = mask.sum(dim=1).clamp(min=1e-6)
+        pooled = summed / counts
+        
+        # Devolve as duas decisões ao mesmo tempo!
+        safety_logit = self.safety_head(pooled).squeeze(-1)  # Shape: (B,)
+        router_logits = self.router_head(pooled)             # Shape: (B, 5)
+        
+        return safety_logit, router_logits
 gpt = GPT(d_model, n_heads, n_blocks, vocab_size, context_length).to(device)
 if tokenizer.pad_token_id is None:
     tokenizer.pad_token_id = tokenizer.eos_token_id
@@ -491,7 +541,7 @@ for i in range(num_receptors):
     print(f"---> Receptor {i} salvo em: {caminho_rec}")
 del estado_cpu
 gc.collect()
-promotor = WARClassifier(
+promotor = WARPromoterRouter(
     d_model=768,
     n_heads=12,
     n_blocks=16,
