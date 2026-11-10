@@ -605,5 +605,4 @@ torch.save(
 )
 
 print("WAR salvo com sucesso!")
-print("Desligando a GPU automaticamente para economizar suas 80 unidades!")
 runtime.unassign()
