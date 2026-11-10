@@ -598,13 +598,6 @@ gc.collect()
 
 treinar_classificador(juiz, juiz_loader, epochs=1, lr=1e-4)
 torch.save(juiz.state_dict(), "/content/drive/MyDrive/WAR2_juiz.pt")
-# Copia os Embeddings e os primeiros 20 blocos do Receptor pré-treinado para o Juiz!
-receptor_state = gpt._orig_mod.state_dict() if hasattr(gpt, "_orig_mod") else gpt.state_dict()
-juiz_state = juiz.state_dict()
-
-for k, v in receptor_state.items():
-    if k in juiz_state and juiz_state[k].shape == v.shape:
-        juiz_state[k].copy_(v)
 # ==========================================================
 # 7. GRÁFICO E SALVAMENTO DO MODELO
 # ==========================================================
