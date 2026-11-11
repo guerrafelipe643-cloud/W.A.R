@@ -444,7 +444,6 @@ losses = []
 val_losses = []
 step = 0  # <--- Inicializado antes do loop!
 
-# Exemplo de função de treino para o Promotor ou Juiz
 def treinar_classificador(modelo, dataloader, epochs=1, lr=1e-4):
     optimizer = torch.optim.AdamW(modelo.parameters(), lr=lr, weight_decay=0.01)
     criterion_bce = nn.BCEWithLogitsLoss()
@@ -499,7 +498,6 @@ for epoch in range(epochs):
                 targets.reshape(-1)
             )
 
-        # 4. Calcula os gradientes (Essencial! Estava faltando no seu código)
         loss.backward()
 
         # 5. Corta gradientes explosivos (evita Loss = NaN em modelos grandes)
@@ -568,7 +566,6 @@ elif device.type == "tpu":
     torch.tpu.empty_cache()
 gc.collect()
 
-# 4. Agora sim! Com a memória 100% livre, treina o Promotor sozinho na placa
 promotor = WARPromoterRouter(
     d_model=768, n_heads=12, n_blocks=16,
     vocab_size=vocab_size, context_length=2048, pad_token_id=pad_id
